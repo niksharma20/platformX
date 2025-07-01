@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Mind Map: Platform X Catalogue</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            color: #1e293b;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 2rem;
+            overflow-x: auto;
+        }
+
+        .mindmap {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-width: max-content;
+        }
+
+        .mindmap-node {
+            display: flex;
+            align-items: center;
+            margin: 10px;
+            position: relative;
+        }
+
+        .mindmap-node > .content {
+            background-color: white;
+            border-radius: 0.75rem;
+            padding: 0.75rem 1.25rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            border: 2px solid transparent;
+            min-width: 180px;
+            text-align: center;
+        }
+
+        .mindmap-node > .content:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+
+        .mindmap-children {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            margin-left: 40px;
+            position: relative;
+        }
+        
+        .mindmap-node.collapsed > .mindmap-children {
+            display: none;
+        }
+
+        /* --- Central Node Styling --- */
+        .mindmap > .mindmap-node > .content {
+            background-color: #4f46e5;
+            color: white;
+            font-weight: 700;
+            font-size: 1.25rem;
+            padding: 1.5rem 2.5rem;
+        }
+
+        /* --- Track Node Styling --- */
+        .track-dev > .content { border-color: #10b981; }
+        .track-pe > .content { border-color: #3b82f6; }
+        .track-nontech > .content { border-color: #f97316; }
+
+        .track-dev > .content { background-color: #ecfdf5; color: #047857; }
+        .track-pe > .content { background-color: #eff6ff; color: #1d4ed8; }
+        .track-nontech > .content { background-color: #fff7ed; color: #c2410c; }
+
+        /* --- Level Node Styling --- */
+        .level-node > .content {
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+        }
+        
+        .level-details {
+            background-color: #f8fafc;
+            border-left: 3px solid #cbd5e1;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+            border-radius: 0.5rem;
+            text-align: left;
+            font-size: 0.8rem;
+            color: #475569;
+        }
+        .level-details strong {
+            color: #1e293b;
+        }
+
+        /* --- Connecting Lines --- */
+        .mindmap-children::before {
+            content: "";
+            position: absolute;
+            left: -20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 2px;
+            background-color: #94a3b8;
+        }
+
+        .mindmap-node:not(.central-node) {
+            position: relative;
+        }
+        
+        .mindmap-node:not(.central-node)::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 2px;
+            background-color: #94a3b8;
+        }
+        
+        .mindmap-children .mindmap-node::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: #94a3b8;
+        }
+
+        .mindmap-children .mindmap-node:first-child::after {
+            top: 50%;
+        }
+
+        .mindmap-children .mindmap-node:last-child::after {
+            bottom: 50%;
+        }
+        
+        .mindmap-children .mindmap-node:only-child::after {
+            display: none;
+        }
+        
+        .content .toggle-icon {
+            margin-left: 8px;
+            font-weight: bold;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+        
+        .mindmap-node.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Mind Map Structure -->
+    <div class="mindmap">
+        <div class="mindmap-node central-node">
+            <div class="content">Mind Map Assistance<br>Platform X Catalogue</div>
+            <div class="mindmap-children">
+
+                <!-- Developer Track -->
+                <div class="mindmap-node track-dev collapsed">
+                    <div class="content">
+                        <h3 class="font-bold text-lg">Developer <span class="toggle-icon">&#9662;</span></h3>
+                    </div>
+                    <div class="mindmap-children">
+                        <div class="mindmap-node level-node collapsed">
+                            <div class="content">101 <span class="toggle-icon">&#9662;</span></div>
+                            <div class="mindmap-children">
+                                <div class="level-details">
+                                    <strong>Focus:</strong> Intro to platform, core functions, basic app deployment.<br>
+                                    <strong>Sales Play:</strong> "Zero to Hero: Your First Application" Workshop
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mindmap-node level-node collapsed">
+                            <div class="content">201 <span class="toggle-icon">&#9662;</span></div>
+                             <div class="mindmap-children">
+                                <div class="level-details">
+                                    <strong>Focus:</strong> Platform services, integrations, best practices.<br>
+                                    <strong>Sales Play:</strong> "Cloud-Native Essentials for Developers" Workshop
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mindmap-node level-node collapsed">
+                            <div class="content">301 <span class="toggle-icon">&#9662;</span></div>
+                             <div class="mindmap-children">
+                                <div class="level-details">
+                                    <strong>Focus:</strong> Complex architectures, performance optimization.<br>
+                                    <strong>Sales Play:</strong> "Java for AI: Hands-On Workshop"
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mindmap-node level-node collapsed">
+                            <div class="content">401 <span class="toggle-icon">&#9662;</span></div>
+                             <div class="mindmap-children">
+                                <div class="level-details">
+                                    <strong>Focus:</strong> Pushing boundaries, contributing, mentoring.<br>
+                                    <strong>Sales Play:</strong> "DevSecOps in Practice: A Deep Dive Workshop"
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Platform Engineer Track -->
+                <div class="mindmap-node track-pe collapsed">
+                    <div class="content">
+                        <h3 class="font-bold text-lg">Platform Engineer <span class="toggle-icon">&#9662;</span></h3>
+                    </div>
+                    <div class="mindmap-children">
+                        <div class="mindmap-node level-node collapsed">
+                            <div class="content">101 <span class="toggle-icon">&#9662;</span></div>
+                            <div class="mindmap-children">
+                                <div class="level-details">
+                                    <strong>Focus:</strong> Core components, initial setup.<br>
+                                    <strong>Sales Play:</strong> "Platform Engineering Kickstart" Session
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mindmap-node level-node collapsed">
+                            <div class="content">201 <span class="toggle-icon">&#9662;</span></div>
+                            <div class="mindmap-children">
+                                <div class="level-details">
+                                    <strong>Focus:</strong> Automating operations, integrating tools.<br>
+                                    <strong>Sales Play:</strong> "Building Your Internal Developer Platform" Workshop
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mindmap-node level-node collapsed">
+                            <div class="content">301 <span class="toggle-icon">&#9662;</span></div>
+                            <div class="mindmap-children">
+                                <div class="level-details">
+                                    <strong>Focus:</strong> Developer self-service, reliability.<br>
+                                    <strong>Sales Play:</strong> "Scaling Your Cloud-Native Platform" Masterclass
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mindmap-node level-node collapsed">
+                            <div class="content">401 <span class="toggle-icon">&#9662;</span></div>
+                            <div class="mindmap-children">
+                                <div class="level-details">
+                                    <strong>Focus:</strong> Governance, measuring effectiveness, evolution.<br>
+                                    <strong>Sales Play:</strong> "Platform as a Product: A Strategic Workshop"
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Business value & Impact Track -->
+                <div class="mindmap-node track-nontech collapsed">
+                    <div class="content">
+                        <h3 class="font-bold text-lg">Business value & Impact <span class="toggle-icon">&#9662;</span></h3>
+                    </div>
+                     <div class="mindmap-children">
+                        <div class="mindmap-node level-node collapsed">
+                            <div class="content">101 <span class="toggle-icon">&#9662;</span></div>
+                            <div class="mindmap-children">
+                                <div class="level-details">
+                                    <strong>Focus:</strong> Platform purpose, business impact.<br>
+                                    <strong>Sales Play:</strong> "Decoding Tech for Business Leaders"
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mindmap-node level-node collapsed">
+                            <div class="content">201 <span class="toggle-icon">&#9662;</span></div>
+                            <div class="mindmap-children">
+                                <div class="level-details">
+                                    <strong>Focus:</strong> Interacting with dev teams via the platform.<br>
+                                    <strong>Sales Play:</strong> "Agile for Everyone: A Hands-On Simulation"
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mindmap-node level-node collapsed">
+                            <div class="content">301 <span class="toggle-icon">&#9662;</span></div>
+                            <div class="mindmap-children">
+                                <div class="level-details">
+                                    <strong>Focus:</strong> Leveraging platform data for decisions.<br>
+                                    <strong>Sales Play:</strong> "Data-Informed Product Management" Workshop
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mindmap-node level-node collapsed">
+                            <div class="content">401 <span class="toggle-icon">&#9662;</span></div>
+                            <div class="mindmap-children">
+                                <div class="level-details">
+                                    <strong>Focus:</strong> Contributing to product strategy.<br>
+                                    <strong>Sales Play:</strong> "Driving Business Value Through Technology"
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // JavaScript to handle collapsing and expanding nodes
+        document.addEventListener('DOMContentLoaded', function () {
+            const nodes = document.querySelectorAll('.mindmap-node .content');
+
+            nodes.forEach(node => {
+                // Check if the node has children to toggle
+                const parentNode = node.parentElement;
+                const childrenContainer = parentNode.querySelector('.mindmap-children');
+                
+                if (childrenContainer && childrenContainer.children.length > 0) {
+                    // Add toggle functionality only if there are children
+                    node.addEventListener('click', function (event) {
+                        event.stopPropagation(); // Prevent event from bubbling up to parent nodes
+                        parentNode.classList.toggle('collapsed');
+                    });
+                } else {
+                    // If no children, remove cursor pointer and toggle icon
+                    node.style.cursor = 'default';
+                    const icon = node.querySelector('.toggle-icon');
+                    if (icon) {
+                        icon.style.display = 'none';
+                    }
+                }
+            });
+            
+            // Initially expand the first level (the tracks)
+            const centralNode = document.querySelector('.central-node');
+            if(centralNode) {
+                const trackNodes = centralNode.querySelectorAll(':scope > .mindmap-children > .mindmap-node');
+                trackNodes.forEach(tn => tn.classList.remove('collapsed'));
+            }
+        });
+    </script>
+
+</body>
+</html>
