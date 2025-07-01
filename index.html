@@ -19,6 +19,19 @@
             right: 1rem;
             z-index: 100;
         }
+        #message-banner {
+            position: fixed;
+            top: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #fffbeb;
+            color: #b45309;
+            padding: 0.5rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            z-index: 100;
+            border: 1px solid #fef3c7;
+        }
         #auth-container button {
             background-color: #24292e;
             color: white;
@@ -170,6 +183,7 @@
 </head>
 <body>
     <div id="auth-container"></div>
+    <div id="message-banner" class="hidden"></div>
     <div id="mindmap-container">
         <div id="mindmap-content" class="mindmap-content"></div>
     </div>
@@ -202,6 +216,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         const githubProvider = new GithubAuthProvider();
+        githubProvider.addScope('read:org');
         
         // This is the specific document in the database where our mind map data is stored.
         const mindmapDocRef = doc(db, "mindmaps", "platformXCatalogue");
@@ -215,6 +230,7 @@
         const container = document.getElementById('mindmap-content');
         const linesContainer = document.getElementById('lines-container');
         const authContainer = document.getElementById('auth-container');
+        const messageBanner = document.getElementById('message-banner');
         let nodeCounter = 0;
         let mindmapData = {};
 
@@ -230,7 +246,6 @@
         };
         
         // --- AUTHENTICATION SECTION ---
-        // This function updates the UI to show either a login button or the user's info.
         function updateAuthUI(user) {
             if (user && isAuthorized) {
                 authContainer.innerHTML = `
@@ -247,43 +262,64 @@
             }
         }
 
-        // This function checks if a logged-in user is part of the required GitHub organization.
         async function checkAuthorization(user) {
+            messageBanner.classList.add('hidden');
             if (!user) {
                 isAuthorized = false;
                 rerender();
                 return;
             }
-            // In a real app, you would securely verify the token on a backend.
-            // For this client-side example, we'll simulate the check.
-            // This is a simplified check. A real implementation would use a backend function
-            // to securely verify the user's org membership to prevent tampering.
-            isAuthorized = true; // For demonstration. Replace with actual API call.
+
+            try {
+                const credential = GithubAuthProvider.credentialFromError(user) || GithubAuthProvider.credential(user.accessToken);
+                const token = credential ? credential.accessToken : (await user.getIdTokenResult()).token;
+                
+                const response = await fetch(`https://api.github.com/orgs/${ORG_NAME}/members/${user.providerData[0].uid}`, {
+                    headers: { 'Authorization': `token ${token}` }
+                });
+
+                if (response.status === 204) {
+                    isAuthorized = true;
+                } else {
+                    isAuthorized = false;
+                    messageBanner.textContent = "You do not have permission to edit.";
+                    messageBanner.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error("Authorization check failed:", error);
+                isAuthorized = false;
+                messageBanner.textContent = "Could not verify permissions.";
+                messageBanner.classList.remove('hidden');
+            }
+            
+            updateAuthUI(user);
             rerender();
         }
 
-        // This listener fires whenever the user's login state changes.
         onAuthStateChanged(auth, (user) => {
-            updateAuthUI(user);
-            checkAuthorization(user);
+            if (user) {
+                checkAuthorization(user);
+            } else {
+                isAuthorized = false;
+                updateAuthUI(null);
+                rerender();
+                messageBanner.classList.add('hidden');
+            }
         });
         
         // --- DATABASE (FIRESTORE) SECTION ---
-        // This function saves the entire mind map data object to Firestore.
         function saveDataToFirestore() {
             if (isAuthorized) {
                 setDoc(mindmapDocRef, mindmapData);
             }
         }
 
-        // This sets up a real-time listener. Whenever the data changes in Firestore,
-        // it automatically fetches the new data and re-renders the mind map for all users.
         onSnapshot(mindmapDocRef, (doc) => {
             if (doc.exists()) {
                 mindmapData = doc.data();
             } else {
                 mindmapData = defaultData;
-                saveDataToFirestore(); // Create the document if it doesn't exist
+                if(isAuthorized) setDoc(mindmapDocRef, mindmapData);
             }
             rerender();
         });
