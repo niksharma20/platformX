@@ -90,6 +90,7 @@
         .track-node.developer { border-color: #10b981; color: #047857; }
         .track-node.platform-engineer { border-color: #3b82f6; color: #1d4ed8; }
         .track-node.business { border-color: #f97316; color: #c2410c; }
+        .track-node.default { border-color: #64748b; color: #475569; }
         .level-node { font-size: 0.9rem; color: #475569; padding-left: 1rem; padding-right: 0.5rem; }
         
         .sub-level-node { 
@@ -102,6 +103,7 @@
         .sub-level-node.sub-level-developer { background-color: #f0fdfa; border-color: #10b981; }
         .sub-level-node.sub-level-platform-engineer { background-color: #eff6ff; border-color: #3b82f6; }
         .sub-level-node.sub-level-business { background-color: #fff7ed; border-color: #f97316; }
+        .sub-level-node.sub-level-default { background-color: #f1f5f9; border-color: #64748b; }
 
         .sub-level-content { flex-grow: 1; width: 100%; }
         .field-group { display: flex; flex-direction: column; margin-bottom: 0.5rem; }
@@ -247,10 +249,18 @@
                     nodeEl.appendChild(nodeText);
                 }
 
+                if (nodeData.type === 'central') {
+                    const addBtn = document.createElement('button'); addBtn.className = 'add-btn'; addBtn.textContent = '+';
+                    addBtn.onclick = (e) => { e.stopPropagation(); addTrackNode(); };
+                    nodeActions.appendChild(addBtn);
+                }
                 if (nodeData.type === 'track') {
                     const addBtn = document.createElement('button'); addBtn.className = 'add-btn'; addBtn.textContent = '+';
                     addBtn.onclick = (e) => { e.stopPropagation(); addLevelNode(nodeData); };
+                    const removeBtn = document.createElement('button'); removeBtn.className = 'remove-btn'; removeBtn.textContent = '-';
+                    removeBtn.onclick = (e) => { e.stopPropagation(); removeNode(nodeData.id, parentData.id); };
                     nodeActions.appendChild(addBtn);
+                    nodeActions.appendChild(removeBtn);
                 }
                 if (nodeData.type === 'level') {
                     const addBtn = document.createElement('button'); addBtn.className = 'add-btn'; addBtn.textContent = '+';
@@ -269,7 +279,6 @@
                     toggleIcon.textContent = '▼';
                     nodeEl.appendChild(toggleIcon);
                     nodeEl.addEventListener('click', (e) => {
-                        // **FIX:** Only toggle if the click is not on an editable part or a button
                         if (e.target.closest('button') || e.target.isContentEditable) {
                             return;
                         }
@@ -315,6 +324,22 @@
                 saveDataToLocalStorage();
             }
 
+            function addTrackNode() {
+                const trackClasses = ['developer', 'platform-engineer', 'business', 'default'];
+                const newClass = trackClasses[mindmapData.children.length % trackClasses.length];
+                const newNode = {
+                    id: `node-${nodeCounter++}`,
+                    text: 'New Track',
+                    type: 'track',
+                    class: newClass,
+                    isCollapsed: true,
+                    children: []
+                };
+                mindmapData.children.push(newNode);
+                rerender();
+                saveDataToLocalStorage();
+            }
+
             function addLevelNode(parentNodeData) {
                 const newNode = { id: `node-${nodeCounter++}`, text: 'New Level', type: 'level', isCollapsed: true, children: [] };
                 parentNodeData.children.push(newNode);
@@ -326,7 +351,7 @@
                 const subLevelCount = parentNodeData.children.length + 1;
                 const newNode = { id: `node-${nodeCounter++}`, type: 'sub-level', title: `${parentNodeData.text}.${subLevelCount}`, url: 'https://example.com', description: 'Editable description', duration: '1h', customFields: [], children: [] };
                 parentNodeData.children.push(newNode);
-                parentNodeData.isCollapsed = false; // Ensure parent is expanded
+                parentNodeData.isCollapsed = false;
                 rerender();
                 saveDataToLocalStorage();
             }
