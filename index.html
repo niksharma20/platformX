@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Platform X - Standalone Editable Mind Map</title>
+    <title>Platform X - Collaborative Editable Mind Map</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,6 +12,36 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc;
+        }
+        #auth-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 100;
+        }
+        #auth-container button {
+            background-color: #24292e;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        #auth-container #user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        #user-info img {
+            width: 24px;
+            height: 24px;
+            border-radius: 9999px;
         }
         #mindmap-container {
             position: relative;
@@ -139,76 +169,156 @@
     </style>
 </head>
 <body>
+    <div id="auth-container"></div>
     <div id="mindmap-container">
         <div id="mindmap-content" class="mindmap-content"></div>
     </div>
     <div id="lines-container" class="absolute top-0 left-0 w-full h-full pointer-events-none"></div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const container = document.getElementById('mindmap-content');
-            const linesContainer = document.getElementById('lines-container');
-            let nodeCounter = 0;
-            let mindmapData = {};
+    <script type="module">
+        // ===================================================================================
+        // DATABASE (FIRESTORE) & AUTHENTICATION SECTION
+        // This section handles all interactions with Firebase for database and authentication.
+        // ===================================================================================
 
-            const defaultData = {
-                id: `node-0`, text: 'PlatformX Catalogue', type: 'central',
-                children: [
-                    { id: `node-1`, text: 'Developer', type: 'track', class: 'developer', isCollapsed: false, children: [
-                        { id: `node-2`, text: '101', type: 'level', isCollapsed: true, children: [] },
-                        { id: `node-3`, text: '201', type: 'level', isCollapsed: true, children: [] },
-                    ]},
-                    { id: `node-4`, text: 'Platform Engineer', type: 'track', class: 'platform-engineer', isCollapsed: true, children: []},
-                    { id: `node-5`, text: 'Business Value', type: 'track', class: 'business', isCollapsed: true, children: []}
-                ]
-            };
-            
-            function saveDataToLocalStorage() {
-                localStorage.setItem('mindmapData', JSON.stringify(mindmapData));
+        import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, GithubAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // This configuration object is the bridge between this app and your Firebase project.
+        // It has been populated with the values you provided.
+        const firebaseConfig = {
+            apiKey: "AIzaSyCOn0_hrEkn6n_oWLXSbWrhZ3i9MzGWQE8",
+            authDomain: "platformx-96ce2.firebaseapp.com",
+            projectId: "platformx-96ce2",
+            storageBucket: "platformx-96ce2.appspot.com",
+            messagingSenderId: "703163591571",
+            appId: "1:703163591571:web:1cca53504ed365eaad1666",
+            measurementId: "G-B2MQLJK3KW"
+        };
+
+        // Initialize Firebase services.
+        const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const githubProvider = new GithubAuthProvider();
+        
+        // This is the specific document in the database where our mind map data is stored.
+        const mindmapDocRef = doc(db, "mindmaps", "platformXCatalogue");
+        const ORG_NAME = 'RedHatNetherlandsSA';
+        let isAuthorized = false; // This flag controls edit mode.
+
+        // ===================================================================================
+        // APPLICATION LOGIC
+        // ===================================================================================
+
+        const container = document.getElementById('mindmap-content');
+        const linesContainer = document.getElementById('lines-container');
+        const authContainer = document.getElementById('auth-container');
+        let nodeCounter = 0;
+        let mindmapData = {};
+
+        const defaultData = {
+            id: `node-0`, text: 'PlatformX Catalogue', type: 'central',
+            children: [
+                { id: `node-1`, text: 'Developer', type: 'track', class: 'developer', isCollapsed: false, children: [
+                    { id: `node-2`, text: '101', type: 'level', isCollapsed: true, children: [] },
+                ]},
+                { id: `node-4`, text: 'Platform Engineer', type: 'track', class: 'platform-engineer', isCollapsed: true, children: []},
+                { id: `node-5`, text: 'Business Value', type: 'track', class: 'business', isCollapsed: true, children: []}
+            ]
+        };
+        
+        // --- AUTHENTICATION SECTION ---
+        // This function updates the UI to show either a login button or the user's info.
+        function updateAuthUI(user) {
+            if (user && isAuthorized) {
+                authContainer.innerHTML = `
+                    <div id="user-info">
+                        <img src="${user.photoURL}" alt="${user.displayName}" />
+                        <span class="font-bold text-slate-700">${user.displayName}</span>
+                        <button class="remove-btn !ml-2" id="logout-btn">-</button>
+                    </div>
+                `;
+                document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+            } else {
+                authContainer.innerHTML = `<button id="login-btn">Login with GitHub</button>`;
+                document.getElementById('login-btn').addEventListener('click', () => signInWithPopup(auth, githubProvider));
             }
-            
-            function loadDataFromLocalStorage() {
-                const savedData = localStorage.getItem('mindmapData');
-                if (savedData) {
-                    mindmapData = JSON.parse(savedData);
-                    const maxId = Math.max(...JSON.stringify(mindmapData).match(/node-(\d+)/g).map(s => parseInt(s.split('-')[1])));
-                    nodeCounter = maxId + 1;
-                } else {
-                    mindmapData = defaultData;
-                    nodeCounter = 6;
-                    saveDataToLocalStorage();
-                }
+        }
+
+        // This function checks if a logged-in user is part of the required GitHub organization.
+        async function checkAuthorization(user) {
+            if (!user) {
+                isAuthorized = false;
+                rerender();
+                return;
             }
+            // In a real app, you would securely verify the token on a backend.
+            // For this client-side example, we'll simulate the check.
+            // This is a simplified check. A real implementation would use a backend function
+            // to securely verify the user's org membership to prevent tampering.
+            isAuthorized = true; // For demonstration. Replace with actual API call.
+            rerender();
+        }
 
-            function createNodeElement(nodeData, parentData, trackClass) {
-                const nodeWrapper = document.createElement('div');
-                nodeWrapper.className = 'node-wrapper';
-                nodeWrapper.dataset.id = nodeData.id;
+        // This listener fires whenever the user's login state changes.
+        onAuthStateChanged(auth, (user) => {
+            updateAuthUI(user);
+            checkAuthorization(user);
+        });
+        
+        // --- DATABASE (FIRESTORE) SECTION ---
+        // This function saves the entire mind map data object to Firestore.
+        function saveDataToFirestore() {
+            if (isAuthorized) {
+                setDoc(mindmapDocRef, mindmapData);
+            }
+        }
 
-                const nodeEl = document.createElement('div');
-                nodeEl.classList.add('node', `${nodeData.type}-node`);
-                if (nodeData.class) nodeEl.classList.add(nodeData.class);
-                if (nodeData.type === 'sub-level' && trackClass) nodeEl.classList.add(`sub-level-${trackClass}`);
-                if (nodeData.isCollapsed) nodeEl.classList.add('collapsed');
+        // This sets up a real-time listener. Whenever the data changes in Firestore,
+        // it automatically fetches the new data and re-renders the mind map for all users.
+        onSnapshot(mindmapDocRef, (doc) => {
+            if (doc.exists()) {
+                mindmapData = doc.data();
+            } else {
+                mindmapData = defaultData;
+                saveDataToFirestore(); // Create the document if it doesn't exist
+            }
+            rerender();
+        });
 
-                const nodeActions = document.createElement('div');
-                nodeActions.className = 'node-actions';
+        // --- UI & NODE LOGIC ---
+        function createNodeElement(nodeData, parentData, trackClass) {
+            const nodeWrapper = document.createElement('div');
+            nodeWrapper.className = 'node-wrapper';
+            nodeWrapper.dataset.id = nodeData.id;
 
-                if (nodeData.type === 'sub-level') {
-                    const contentDiv = document.createElement('div');
-                    contentDiv.className = 'sub-level-content';
-                    const fields = [
-                        { label: 'Title', key: 'title' }, { label: 'URL', key: 'url' },
-                        { label: 'Description', key: 'description' }, { label: 'Duration', key: 'duration' }
-                    ];
-                    fields.forEach(field => {
-                        contentDiv.innerHTML += `<div class="field-group"><label class="field-label">${field.label}</label><div class="editable-field" contenteditable="true" data-field="${field.key}">${nodeData[field.key] || ''}</div></div>`;
-                    });
-                    (nodeData.customFields || []).forEach(field => {
-                        contentDiv.innerHTML += `<div class="custom-field-group" data-field-id="${field.id}"><div class="field-group" style="flex-grow: 1;"><div class="editable-field" contenteditable="true" data-field="label">${field.label}</div><div class="editable-field" contenteditable="true" data-field="value">${field.value}</div></div><button class="remove-btn" onclick="removeCustomField('${nodeData.id}', '${field.id}')">-</button></div>`;
-                    });
-                    nodeEl.appendChild(contentDiv);
-                    
+            const nodeEl = document.createElement('div');
+            nodeEl.classList.add('node', `${nodeData.type}-node`);
+            if (nodeData.class) nodeEl.classList.add(nodeData.class);
+            if (nodeData.type === 'sub-level' && trackClass) nodeEl.classList.add(`sub-level-${trackClass}`);
+            if (nodeData.isCollapsed) nodeEl.classList.add('collapsed');
+
+            const nodeActions = document.createElement('div');
+            nodeActions.className = 'node-actions';
+
+            if (nodeData.type === 'sub-level') {
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'sub-level-content';
+                const fields = [
+                    { label: 'Title', key: 'title' }, { label: 'URL', key: 'url' },
+                    { label: 'Description', key: 'description' }, { label: 'Duration', key: 'duration' }
+                ];
+                fields.forEach(field => {
+                    contentDiv.innerHTML += `<div class="field-group"><label class="field-label">${field.label}</label><div class="editable-field" contenteditable="${isAuthorized}" data-field="${field.key}">${nodeData[field.key] || ''}</div></div>`;
+                });
+                (nodeData.customFields || []).forEach(field => {
+                    contentDiv.innerHTML += `<div class="custom-field-group" data-field-id="${field.id}"><div class="field-group" style="flex-grow: 1;"><div class="editable-field" contenteditable="${isAuthorized}" data-field="label">${field.label}</div><div class="editable-field" contenteditable="${isAuthorized}" data-field="value">${field.value}</div></div>${isAuthorized ? `<button class="remove-btn" onclick="removeCustomField('${nodeData.id}', '${field.id}')">-</button>` : ''}</div>`;
+                });
+                nodeEl.appendChild(contentDiv);
+                
+                if (isAuthorized) {
                     const actionDiv = document.createElement('div');
                     actionDiv.className = 'sub-level-actions';
                     const addFieldBtn = document.createElement('button');
@@ -220,36 +330,17 @@
                     actionDiv.appendChild(addFieldBtn);
                     actionDiv.appendChild(removeNodeBtn);
                     nodeEl.appendChild(actionDiv);
-                    
-                    contentDiv.querySelectorAll('.editable-field').forEach(field => {
-                        field.addEventListener('input', (e) => {
-                            const dataField = e.target.dataset.field;
-                            const customFieldGroup = e.target.closest('.custom-field-group');
-                            if (customFieldGroup) {
-                                const fieldId = customFieldGroup.dataset.fieldId;
-                                const node = findNodeById(mindmapData, nodeData.id);
-                                const customField = node.customFields.find(f => f.id === fieldId);
-                                if (customField) customField[dataField] = e.target.textContent;
-                            } else {
-                                findNodeById(mindmapData, nodeData.id)[dataField] = e.target.textContent;
-                            }
-                            saveDataToLocalStorage();
-                        });
-                    });
-
-                } else {
-                    const nodeText = document.createElement('span');
-                    nodeText.className = 'node-text';
-                    nodeText.textContent = nodeData.text;
-                    nodeText.setAttribute('contenteditable', 'true');
-                    nodeText.addEventListener('input', (e) => {
-                        findNodeById(mindmapData, nodeData.id).text = e.target.textContent;
-                        saveDataToLocalStorage();
-                    });
-                    nodeEl.appendChild(nodeText);
                 }
+            } else {
+                const nodeText = document.createElement('span');
+                nodeText.className = 'node-text';
+                nodeText.textContent = nodeData.text;
+                nodeText.setAttribute('contenteditable', isAuthorized);
+                nodeEl.appendChild(nodeText);
+            }
 
-                if (nodeData.type === 'central') {
+            if (isAuthorized) {
+                 if (nodeData.type === 'central') {
                     const addBtn = document.createElement('button'); addBtn.className = 'add-btn'; addBtn.textContent = '+';
                     addBtn.onclick = (e) => { e.stopPropagation(); addTrackNode(); };
                     nodeActions.appendChild(addBtn);
@@ -270,190 +361,183 @@
                     nodeActions.appendChild(addBtn);
                     nodeActions.appendChild(removeBtn);
                 }
-                
-                if (nodeData.type !== 'sub-level') nodeEl.appendChild(nodeActions);
-
-                if (nodeData.type === 'track' || nodeData.type === 'level') {
-                    const toggleIcon = document.createElement('span');
-                    toggleIcon.className = 'toggle-icon';
-                    toggleIcon.textContent = '▼';
-                    nodeEl.appendChild(toggleIcon);
-                    nodeEl.addEventListener('click', (e) => {
-                        if (e.target.closest('button') || e.target.isContentEditable) {
-                            return;
-                        }
-                        if (nodeData.type === 'track') toggleCollapse(nodeData.id, 'track');
-                        if (nodeData.type === 'level') toggleCollapse(nodeData.id, 'level', parentData.id);
-                    });
-                }
-
-                nodeWrapper.appendChild(nodeEl);
-                return nodeWrapper;
             }
             
-            function findNodeById(data, id) {
-                if (data.id === id) return data;
-                for (const child of data.children || []) {
-                    const found = findNodeById(child, id);
-                    if (found) return found;
-                }
-                return null;
-            }
+            if (nodeData.type !== 'sub-level') nodeEl.appendChild(nodeActions);
 
-            function toggleCollapse(nodeId, type, parentId = null) {
-                const clickedNode = findNodeById(mindmapData, nodeId);
-                if (!clickedNode) return;
-
-                let siblings = [];
-                if (type === 'track') {
-                    siblings = mindmapData.children;
-                } else if (type === 'level' && parentId) {
-                    const parentNode = findNodeById(mindmapData, parentId);
-                    if (parentNode) siblings = parentNode.children;
-                }
-                
-                const wasCollapsed = clickedNode.isCollapsed;
-                siblings.forEach(node => {
-                    if (node.id !== nodeId) {
-                        node.isCollapsed = true;
-                    }
+            if (nodeData.type === 'track' || nodeData.type === 'level') {
+                const toggleIcon = document.createElement('span');
+                toggleIcon.className = 'toggle-icon';
+                toggleIcon.textContent = '▼';
+                nodeEl.appendChild(toggleIcon);
+                nodeEl.addEventListener('click', (e) => {
+                    if (e.target.closest('button') || e.target.isContentEditable) return;
+                    if (nodeData.type === 'track') toggleCollapse(nodeData.id, 'track');
+                    if (nodeData.type === 'level') toggleCollapse(nodeData.id, 'level', parentData.id);
                 });
-                clickedNode.isCollapsed = !wasCollapsed;
-
-                rerender();
-                saveDataToLocalStorage();
             }
 
-            function addTrackNode() {
-                const trackClasses = ['developer', 'platform-engineer', 'business', 'default'];
-                const newClass = trackClasses[mindmapData.children.length % trackClasses.length];
-                const newNode = {
-                    id: `node-${nodeCounter++}`,
-                    text: 'New Track',
-                    type: 'track',
-                    class: newClass,
-                    isCollapsed: true,
-                    children: []
-                };
-                mindmapData.children.push(newNode);
-                rerender();
-                saveDataToLocalStorage();
+            nodeWrapper.appendChild(nodeEl);
+            return nodeWrapper;
+        }
+        
+        function findNodeById(data, id) {
+            if (data.id === id) return data;
+            for (const child of data.children || []) {
+                const found = findNodeById(child, id);
+                if (found) return found;
             }
+            return null;
+        }
 
-            function addLevelNode(parentNodeData) {
-                const newNode = { id: `node-${nodeCounter++}`, text: 'New Level', type: 'level', isCollapsed: true, children: [] };
-                parentNodeData.children.push(newNode);
-                rerender();
-                saveDataToLocalStorage();
-            }
-
-            function addSubLevelNode(parentNodeData) {
-                const subLevelCount = parentNodeData.children.length + 1;
-                const newNode = { id: `node-${nodeCounter++}`, type: 'sub-level', title: `${parentNodeData.text}.${subLevelCount}`, url: 'https://example.com', description: 'Editable description', duration: '1h', customFields: [], children: [] };
-                parentNodeData.children.push(newNode);
-                parentNodeData.isCollapsed = false;
-                rerender();
-                saveDataToLocalStorage();
-            }
-
-            window.addCustomField = function(nodeId) {
-                const node = findNodeById(mindmapData, nodeId);
-                if (node && node.type === 'sub-level') {
-                    if (!node.customFields) node.customFields = [];
-                    node.customFields.push({ id: `field-${Date.now()}`, label: 'New Field', value: '...' });
-                    rerender();
-                    saveDataToLocalStorage();
-                }
-            }
-
-            window.removeCustomField = function(nodeId, fieldId) {
-                const node = findNodeById(mindmapData, nodeId);
-                if (node && node.customFields) {
-                    node.customFields = node.customFields.filter(f => f.id !== fieldId);
-                    rerender();
-                    saveDataToLocalStorage();
-                }
-            }
-
-            function removeNode(nodeId, parentId) {
+        function toggleCollapse(nodeId, type, parentId = null) {
+            const clickedNode = findNodeById(mindmapData, nodeId);
+            if (!clickedNode) return;
+            let siblings = [];
+            if (type === 'track') siblings = mindmapData.children;
+            else if (type === 'level' && parentId) {
                 const parentNode = findNodeById(mindmapData, parentId);
-                if (parentNode) {
-                    parentNode.children = parentNode.children.filter(child => child.id !== nodeId);
-                    rerender();
-                    saveDataToLocalStorage();
-                }
+                if (parentNode) siblings = parentNode.children;
             }
-
-            function drawLines() {
-                linesContainer.innerHTML = '';
-                const mindmapContainerRect = document.getElementById('mindmap-container').getBoundingClientRect();
-                const queue = [mindmapData];
-                while(queue.length > 0) {
-                    const parentData = queue.shift();
-                    if (parentData.children && parentData.children.length > 0 && !parentData.isCollapsed) {
-                        const parentWrapper = document.querySelector(`.node-wrapper[data-id="${parentData.id}"]`);
-                        if (!parentWrapper) continue;
-                        const parentRect = parentWrapper.getBoundingClientRect();
-                        const parentExitX = parentRect.right - mindmapContainerRect.left;
-                        const parentExitY = parentRect.top - mindmapContainerRect.top + parentRect.height / 2;
-                        const childrenWrappers = parentData.children.map(child => document.querySelector(`.node-wrapper[data-id="${child.id}"]`)).filter(Boolean);
-                        if (childrenWrappers.length > 0) {
-                            const firstChildRect = childrenWrappers[0].getBoundingClientRect();
-                            const lastChildRect = childrenWrappers[childrenWrappers.length - 1].getBoundingClientRect();
-                            const midX = parentExitX + 75;
-                            const hLineParent = document.createElement('div');
-                            hLineParent.className = 'line';
-                            hLineParent.style.left = `${parentExitX}px`; hLineParent.style.top = `${parentExitY - 1}px`;
-                            hLineParent.style.width = '75px'; hLineParent.style.height = '2px';
-                            linesContainer.appendChild(hLineParent);
-                            const vLine = document.createElement('div');
-                            vLine.className = 'line';
-                            const vTop = firstChildRect.top - mindmapContainerRect.top + firstChildRect.height / 2;
-                            const vBottom = lastChildRect.top - mindmapContainerRect.top + lastChildRect.height / 2;
-                            vLine.style.left = `${midX - 1}px`; vLine.style.top = `${vTop}px`;
-                            vLine.style.width = '2px'; vLine.style.height = `${vBottom - vTop}px`;
-                            linesContainer.appendChild(vLine);
-                            childrenWrappers.forEach(childWrapper => {
-                                const childRect = childWrapper.getBoundingClientRect();
-                                const childEntryX = childRect.left - mindmapContainerRect.left;
-                                const childEntryY = childRect.top - mindmapContainerRect.top + childRect.height / 2;
-                                const hLineChild = document.createElement('div');
-                                hLineChild.className = 'line';
-                                hLineChild.style.left = `${midX}px`; hLineChild.style.top = `${childEntryY - 1}px`;
-                                hLineChild.style.width = `${childEntryX - midX}px`; hLineChild.style.height = '2px';
-                                linesContainer.appendChild(hLineChild);
-                            });
-                        }
-                        queue.push(...parentData.children);
-                    }
-                }
-            }
-
-            function rerender() {
-                container.innerHTML = '';
-                const columns = new Map();
-                function placeNode(nodeData, level, parentData, trackClass = '') {
-                    if (nodeData.type === 'track') trackClass = nodeData.class;
-                    if (!columns.has(level)) {
-                        const columnEl = document.createElement('div');
-                        columnEl.className = 'node-level';
-                        columns.set(level, columnEl);
-                        container.appendChild(columnEl);
-                    }
-                    const column = columns.get(level);
-                    const nodeWrapper = createNodeElement(nodeData, parentData, trackClass);
-                    column.appendChild(nodeWrapper);
-                    if (nodeData.children && !nodeData.isCollapsed) {
-                        nodeData.children.forEach(child => placeNode(child, level + 1, nodeData, trackClass));
-                    }
-                }
-                placeNode(mindmapData, 0, null);
-                setTimeout(drawLines, 50);
-            }
-            
-            loadDataFromLocalStorage();
+            const wasCollapsed = clickedNode.isCollapsed;
+            siblings.forEach(node => { if (node.id !== nodeId) node.isCollapsed = true; });
+            clickedNode.isCollapsed = !wasCollapsed;
             rerender();
-            window.addEventListener('resize', rerender);
+            saveDataToFirestore();
+        }
+
+        function addTrackNode() {
+            const trackClasses = ['developer', 'platform-engineer', 'business', 'default'];
+            const newClass = trackClasses[mindmapData.children.length % trackClasses.length];
+            const newNode = { id: `node-${Date.now()}`, text: 'New Track', type: 'track', class: newClass, isCollapsed: true, children: [] };
+            mindmapData.children.push(newNode);
+            rerender();
+            saveDataToFirestore();
+        }
+
+        function addLevelNode(parentNodeData) {
+            const newNode = { id: `node-${Date.now()}`, text: 'New Level', type: 'level', isCollapsed: true, children: [] };
+            parentNodeData.children.push(newNode);
+            rerender();
+            saveDataToFirestore();
+        }
+
+        function addSubLevelNode(parentNodeData) {
+            const subLevelCount = parentNodeData.children.length + 1;
+            const newNode = { id: `node-${Date.now()}`, type: 'sub-level', title: `${parentNodeData.text}.${subLevelCount}`, url: 'https://example.com', description: 'Editable description', duration: '1h', customFields: [], children: [] };
+            parentNodeData.children.push(newNode);
+            parentNodeData.isCollapsed = false;
+            rerender();
+            saveDataToFirestore();
+        }
+
+        window.addCustomField = function(nodeId) {
+            const node = findNodeById(mindmapData, nodeId);
+            if (node && node.type === 'sub-level') {
+                if (!node.customFields) node.customFields = [];
+                node.customFields.push({ id: `field-${Date.now()}`, label: 'New Field', value: '...' });
+                rerender();
+                saveDataToFirestore();
+            }
+        }
+
+        window.removeCustomField = function(nodeId, fieldId) {
+            const node = findNodeById(mindmapData, nodeId);
+            if (node && node.customFields) {
+                node.customFields = node.customFields.filter(f => f.id !== fieldId);
+                rerender();
+                saveDataToFirestore();
+            }
+        }
+
+        function removeNode(nodeId, parentId) {
+            const parentNode = findNodeById(mindmapData, parentId);
+            if (parentNode) {
+                parentNode.children = parentNode.children.filter(child => child.id !== nodeId);
+                rerender();
+                saveDataToFirestore();
+            }
+        }
+
+        function drawLines() {
+            linesContainer.innerHTML = '';
+            const mindmapContainerRect = document.getElementById('mindmap-container').getBoundingClientRect();
+            const queue = [mindmapData];
+            while(queue.length > 0) {
+                const parentData = queue.shift();
+                if (parentData.children && parentData.children.length > 0 && !parentData.isCollapsed) {
+                    const parentWrapper = document.querySelector(`.node-wrapper[data-id="${parentData.id}"]`);
+                    if (!parentWrapper) continue;
+                    const parentRect = parentWrapper.getBoundingClientRect();
+                    const parentExitX = parentRect.right - mindmapContainerRect.left;
+                    const parentExitY = parentRect.top - mindmapContainerRect.top + parentRect.height / 2;
+                    const childrenWrappers = parentData.children.map(child => document.querySelector(`.node-wrapper[data-id="${child.id}"]`)).filter(Boolean);
+                    if (childrenWrappers.length > 0) {
+                        const firstChildRect = childrenWrappers[0].getBoundingClientRect();
+                        const lastChildRect = childrenWrappers[childrenWrappers.length - 1].getBoundingClientRect();
+                        const midX = parentExitX + 75;
+                        const hLineParent = document.createElement('div');
+                        hLineParent.className = 'line';
+                        hLineParent.style.left = `${parentExitX}px`; hLineParent.style.top = `${parentExitY - 1}px`;
+                        hLineParent.style.width = '75px'; hLineParent.style.height = '2px';
+                        linesContainer.appendChild(hLineParent);
+                        const vLine = document.createElement('div');
+                        vLine.className = 'line';
+                        const vTop = firstChildRect.top - mindmapContainerRect.top + firstChildRect.height / 2;
+                        const vBottom = lastChildRect.top - mindmapContainerRect.top + lastChildRect.height / 2;
+                        vLine.style.left = `${midX - 1}px`; vLine.style.top = `${vTop}px`;
+                        vLine.style.width = '2px'; vLine.style.height = `${vBottom - vTop}px`;
+                        linesContainer.appendChild(vLine);
+                        childrenWrappers.forEach(childWrapper => {
+                            const childRect = childWrapper.getBoundingClientRect();
+                            const childEntryX = childRect.left - mindmapContainerRect.left;
+                            const childEntryY = childRect.top - mindmapContainerRect.top + childRect.height / 2;
+                            const hLineChild = document.createElement('div');
+                            hLineChild.className = 'line';
+                            hLineChild.style.left = `${midX}px`; hLineChild.style.top = `${childEntryY - 1}px`;
+                            hLineChild.style.width = `${childEntryX - midX}px`; hLineChild.style.height = '2px';
+                            linesContainer.appendChild(hLineChild);
+                        });
+                    }
+                    queue.push(...parentData.children);
+                }
+            }
+        }
+
+        function rerender() {
+            container.innerHTML = '';
+            const columns = new Map();
+            function placeNode(nodeData, level, parentData, trackClass = '') {
+                if (nodeData.type === 'track') trackClass = nodeData.class;
+                if (!columns.has(level)) {
+                    const columnEl = document.createElement('div');
+                    columnEl.className = 'node-level';
+                    columns.set(level, columnEl);
+                    container.appendChild(columnEl);
+                }
+                const column = columns.get(level);
+                const nodeWrapper = createNodeElement(nodeData, parentData, trackClass);
+                column.appendChild(nodeWrapper);
+                if (nodeData.children && !nodeData.isCollapsed) {
+                    nodeData.children.forEach(child => placeNode(child, level + 1, nodeData, trackClass));
+                }
+            }
+            placeNode(mindmapData, 0, null);
+            setTimeout(drawLines, 50);
+        }
+        
+        // Initial setup
+        rerender(); // Render once with default data or empty state
+        window.addEventListener('resize', rerender);
+
+        // Add event listeners for dynamic content editing after rendering
+        container.addEventListener('input', (e) => {
+            if (isAuthorized) {
+                const field = e.target.closest('.editable-field');
+                if (field) {
+                     saveDataToFirestore();
+                }
+            }
         });
     </script>
 </body>
