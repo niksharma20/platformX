@@ -170,7 +170,8 @@
                 children: [
                     { 
                         id: `node-1`, text: 'Developer', type: 'track', class: 'developer', isCollapsed: false,
-                        customFields: [{id: 'field-1', label: 'Overview', value: 'Main description for the developer track.'}],
+                        cardTitle: 'Developer Track Overview',
+                        lines: [{id: 'line-1', text: 'Main description for the developer track.'}],
                         children: [
                             { id: `node-2`, text: '101', type: 'level', isCollapsed: true, children: [] },
                             { id: `node-3`, text: '201', type: 'level', isCollapsed: true, children: [] },
@@ -178,12 +179,14 @@
                     },
                     { 
                         id: `node-4`, text: 'Platform Engineer', type: 'track', class: 'platform-engineer', isCollapsed: true, 
-                        customFields: [],
+                        cardTitle: 'Platform Engineer Overview',
+                        lines: [],
                         children: []
                     },
                     { 
                         id: `node-5`, text: 'Business Value', type: 'track', class: 'business', isCollapsed: true, 
-                        customFields: [],
+                        cardTitle: 'Business Value Overview',
+                        lines: [],
                         children: []
                     }
                 ]
@@ -323,15 +326,17 @@
                     const contentDiv = document.createElement('div');
                     contentDiv.className = 'card-content';
                     
-                    (nodeData.customFields || []).forEach(field => {
-                        contentDiv.innerHTML += `<div class="custom-field-group" data-field-id="${field.id}"><div class="editable-field" contenteditable="true" data-field="label" style="width: 100px; flex-shrink: 0; font-weight: 600; color: #64748b;">${field.label}:</div><div class="editable-field" contenteditable="true" data-field="value" style="flex-grow: 1;">${field.value}</div><button class="remove-btn" onclick="removeTrackCustomField('${nodeData.id}', '${field.id}')">-</button></div>`;
+                    contentDiv.innerHTML = `<div class="field-group"><div class="editable-field text-lg font-bold" contenteditable="true" data-field="cardTitle">${nodeData.cardTitle || 'Card Title'}</div></div>`;
+
+                    (nodeData.lines || []).forEach(line => {
+                        contentDiv.innerHTML += `<div class="custom-field-group" data-line-id="${line.id}"><div class="editable-field" contenteditable="true" data-field="text" style="flex-grow: 1;">${line.text}</div><button class="remove-btn" onclick="removeTrackLine('${nodeData.id}', '${line.id}')">-</button></div>`;
                     });
 
                     const actionDiv = document.createElement('div');
                     actionDiv.className = 'card-actions';
                     const addFieldBtn = document.createElement('button');
                     addFieldBtn.className = 'add-btn'; addFieldBtn.textContent = '+';
-                    addFieldBtn.onclick = (e) => { e.stopPropagation(); addTrackCustomField(nodeData.id); };
+                    addFieldBtn.onclick = (e) => { e.stopPropagation(); addTrackLine(nodeData.id); };
                     actionDiv.appendChild(addFieldBtn);
                     
                     detailCard.appendChild(contentDiv);
@@ -341,10 +346,14 @@
                     detailCard.querySelectorAll('.editable-field').forEach(field => {
                         field.addEventListener('input', (e) => {
                             const dataField = e.target.dataset.field;
-                            const fieldId = e.target.closest('.custom-field-group').dataset.fieldId;
-                            const node = findNodeById(mindmapData, nodeData.id);
-                            const customField = node.customFields.find(f => f.id === fieldId);
-                            if (customField) customField[dataField] = e.target.textContent;
+                            if (dataField === 'cardTitle') {
+                                findNodeById(mindmapData, nodeData.id).cardTitle = e.target.textContent;
+                            } else {
+                                const lineId = e.target.closest('.custom-field-group').dataset.lineId;
+                                const node = findNodeById(mindmapData, nodeData.id);
+                                const line = node.lines.find(l => l.id === lineId);
+                                if (line) line.text = e.target.textContent;
+                            }
                             saveDataToLocalStorage();
                         });
                     });
@@ -392,7 +401,7 @@
                 const newClass = trackClasses[mindmapData.children.length % trackClasses.length];
                 const newNode = {
                     id: `node-${nodeCounter++}`, text: 'New Track', type: 'track', class: newClass, isCollapsed: true,
-                    customFields: [], children: []
+                    cardTitle: 'New Track Overview', lines: [], children: []
                 };
                 mindmapData.children.push(newNode);
                 rerender();
@@ -415,20 +424,20 @@
                 saveDataToLocalStorage();
             }
 
-            window.addTrackCustomField = function(nodeId) {
+            window.addTrackLine = function(nodeId) {
                 const node = findNodeById(mindmapData, nodeId);
                 if (node && node.type === 'track') {
-                    if (!node.customFields) node.customFields = [];
-                    node.customFields.push({ id: `field-${Date.now()}`, label: 'New Field', value: '...' });
+                    if (!node.lines) node.lines = [];
+                    node.lines.push({ id: `line-${Date.now()}`, text: 'New editable line' });
                     rerender();
                     saveDataToLocalStorage();
                 }
             }
 
-            window.removeTrackCustomField = function(nodeId, fieldId) {
+            window.removeTrackLine = function(nodeId, lineId) {
                 const node = findNodeById(mindmapData, nodeId);
-                if (node && node.customFields) {
-                    node.customFields = node.customFields.filter(f => f.id !== fieldId);
+                if (node && node.lines) {
+                    node.lines = node.lines.filter(l => l.id !== lineId);
                     rerender();
                     saveDataToLocalStorage();
                 }
