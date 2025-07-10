@@ -13,7 +13,15 @@
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc;
         }
-        /* Overview Section Styles */
+        /* Modal Styles */
+        .modal-overlay {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .modal-content {
+            transition: transform 0.3s ease-in-out;
+        }
+
+        /* Flip Card Styles */
         .flip-card {
             background-color: transparent;
             width: 100%;
@@ -62,11 +70,12 @@
         /* Mind Map Section Styles */
         #mindmap-container {
             position: relative;
-            padding: 4rem;
+            padding: 8rem 4rem 4rem 4rem; /* Increased top padding */
             display: flex;
-            align-items: center;
+            align-items: flex-start; /* Aligns content to the top */
             justify-content: center;
             width: 100%;
+            min-height: 100vh;
             overflow: auto;
         }
         .mindmap-content {
@@ -185,6 +194,7 @@
         }
          .sub-level-actions { justify-content: space-between; }
 
+
         .line { position: absolute; background-color: #d1d5db; z-index: -1; }
 
         .toggle-icon {
@@ -198,68 +208,102 @@
     </style>
 </head>
 <body>
-    <main>
-        <section id="overview" class="p-8 lg:p-12 bg-white">
-            <div class="max-w-4xl mx-auto">
-                <h2 class="text-3xl font-bold text-center text-slate-800">Project Overview</h2>
-                <p class="text-center text-slate-500 mt-2 mb-8">Click on any question to flip it and see the answer.</p>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div class="flip-card">
-                        <div class="flip-card-inner">
-                            <div class="flip-card-front">
-                                <h2 class="text-2xl font-bold">Why are we doing this?</h2>
-                            </div>
-                            <div class="flip-card-back">
-                                <h3 class="text-xl font-bold mb-2">Why are we doing this?</h3>
-                                <p class="text-base">To prepare a catalogue that provides a uniform, expert approach for customer engagements, ensuring consistency and quality.</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flip-card">
-                        <div class="flip-card-inner">
-                            <div class="flip-card-front">
-                                <h2 class="text-2xl font-bold">How do I choose the right session?</h2>
-                            </div>
-                            <div class="flip-card-back">
-                                <h3 class="text-xl font-bold mb-2">How do I choose the right session?</h3>
-                                <p class="text-base">This catalogue is designed to solve that. Identify the customer's persona (e.g., Developer) and skill level (e.g., 201), then use the mind map to find the corresponding sessions.</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flip-card">
-                        <div class="flip-card-inner">
-                            <div class="flip-card-front">
-                                <h2 class="text-2xl font-bold">What and who are we focusing on?</h2>
-                            </div>
-                            <div class="flip-card-back">
-                                <h3 class="text-xl font-bold mb-2">What and who are we focusing on?</h3>
-                                <p class="text-base">We are focusing on at least three personas: <span class="font-semibold">Developers</span>, <span class="font-semibold">Platform Engineers</span>, and <span class="font-semibold">Non-Technical</span> stakeholders (Business Value).</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flip-card">
-                        <div class="flip-card-inner">
-                            <div class="flip-card-front">
-                                <h2 class="text-2xl font-bold">How are we doing this?</h2>
-                            </div>
-                            <div class="flip-card-back">
-                                <h3 class="text-xl font-bold mb-2">How are we doing this?</h3>
-                                <p class="text-base">Through a combination of presentations, live demos, in-person workshops, and collaborative discussions.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
+    <header class="fixed top-0 left-0 p-4 z-50">
+        <button id="overview-btn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-md font-semibold hover:bg-indigo-700 transition-colors flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+            </svg>
+            Overview
+        </button>
+    </header>
 
+    <main>
         <div id="mindmap-container">
             <div id="mindmap-content" class="mindmap-content"></div>
         </div>
         <div id="lines-container" class="absolute top-0 left-0 w-full h-full pointer-events-none"></div>
     </main>
 
+    <!-- Modal for Overview -->
+    <div id="overview-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+        <div class="modal-content bg-slate-100 rounded-lg shadow-2xl max-w-4xl w-full relative transform scale-95 p-8">
+            <button id="modal-close-btn" class="absolute top-4 right-4 text-slate-500 hover:text-slate-800 text-3xl font-bold">&times;</button>
+            <section id="overview">
+                <div class="max-w-4xl mx-auto">
+                    <h2 class="text-3xl font-bold text-center text-slate-800">Overview</h2>
+                    <p class="text-center text-slate-500 mt-2 mb-8">Click on any question to flip it and see the answer.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="flip-card">
+                            <div class="flip-card-inner">
+                                <div class="flip-card-front">
+                                    <h2 class="text-2xl font-bold">Why are we doing this?</h2>
+                                </div>
+                                <div class="flip-card-back">
+                                    <h3 class="text-xl font-bold mb-2">Why are we doing this?</h3>
+                                    <p class="text-base">To prepare a catalogue that provides a uniform, expert approach for customer engagements, ensuring consistency and quality.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flip-card">
+                            <div class="flip-card-inner">
+                                <div class="flip-card-front">
+                                    <h2 class="text-2xl font-bold">How do I choose the right session?</h2>
+                                </div>
+                                <div class="flip-card-back">
+                                    <h3 class="text-xl font-bold mb-2">How do I choose the right session?</h3>
+                                    <p class="text-base">This catalogue is designed to solve that. Identify the customer's persona (e.g., Developer) and skill level (e.g., 201), then use the mind map to find the corresponding sessions.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flip-card">
+                            <div class="flip-card-inner">
+                                <div class="flip-card-front">
+                                    <h2 class="text-2xl font-bold">What and who are we focusing on?</h2>
+                                </div>
+                                <div class="flip-card-back">
+                                    <h3 class="text-xl font-bold mb-2">What and who are we focusing on?</h3>
+                                    <p class="text-base">We are focusing on at least three personas: <span class="font-semibold">Developers</span>, <span class="font-semibold">Platform Engineers</span>, and <span class="font-semibold">Non-Technical</span> stakeholders (Business Value).</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flip-card">
+                            <div class="flip-card-inner">
+                                <div class="flip-card-front">
+                                    <h2 class="text-2xl font-bold">How are we doing this?</h2>
+                                </div>
+                                <div class="flip-card-back">
+                                    <h3 class="text-xl font-bold mb-2">How are we doing this?</h3>
+                                    <p class="text-base">Through a combination of presentations, live demos, in-person workshops, and collaborative discussions.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Modal logic
+            const overviewBtn = document.getElementById('overview-btn');
+            const modal = document.getElementById('overview-modal');
+            const closeModalBtn = document.getElementById('modal-close-btn');
+
+            overviewBtn.addEventListener('click', () => {
+                modal.classList.remove('hidden');
+            });
+
+            closeModalBtn.addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                }
+            });
+
             // Flip card logic
             const cards = document.querySelectorAll('.flip-card');
             cards.forEach(card => {
