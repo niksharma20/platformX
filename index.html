@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Standalone Editable Mind Map</title>
+    <title>Platform X Catalogue</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,14 +13,60 @@
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc;
         }
+        /* Overview Section Styles */
+        .flip-card {
+            background-color: transparent;
+            width: 100%;
+            height: 250px;
+            perspective: 1000px;
+            cursor: pointer;
+        }
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            box-shadow: 0 4px 8px 0 rgba(0,0,0,0.1);
+            border-radius: 0.75rem;
+        }
+        .flip-card.is-flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+        .flip-card-front, .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+        }
+        .flip-card-front {
+            background-color: white;
+            color: #1e293b;
+        }
+        .flip-card-back {
+            background-color: #4f46e5;
+            color: white;
+            transform: rotateY(180deg);
+            text-align: left;
+            align-items: flex-start;
+        }
+
+        /* Mind Map Section Styles */
         #mindmap-container {
             position: relative;
             padding: 4rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-width: 100vw;
-            min-height: 100vh;
+            width: 100%;
             overflow: auto;
         }
         .mindmap-content {
@@ -139,7 +185,6 @@
         }
          .sub-level-actions { justify-content: space-between; }
 
-
         .line { position: absolute; background-color: #d1d5db; z-index: -1; }
 
         .toggle-icon {
@@ -153,13 +198,77 @@
     </style>
 </head>
 <body>
-    <div id="mindmap-container">
-        <div id="mindmap-content" class="mindmap-content"></div>
-    </div>
-    <div id="lines-container" class="absolute top-0 left-0 w-full h-full pointer-events-none"></div>
+    <main>
+        <section id="overview" class="p-8 lg:p-12 bg-white">
+            <div class="max-w-4xl mx-auto">
+                <h2 class="text-3xl font-bold text-center text-slate-800">Project Overview</h2>
+                <p class="text-center text-slate-500 mt-2 mb-8">Click on any question to flip it and see the answer.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="flip-card">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front">
+                                <h2 class="text-2xl font-bold">Why are we doing this?</h2>
+                            </div>
+                            <div class="flip-card-back">
+                                <h3 class="text-xl font-bold mb-2">Why are we doing this?</h3>
+                                <p class="text-base">To prepare a catalogue that provides a uniform, expert approach for customer engagements, ensuring consistency and quality.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flip-card">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front">
+                                <h2 class="text-2xl font-bold">How do I choose the right session?</h2>
+                            </div>
+                            <div class="flip-card-back">
+                                <h3 class="text-xl font-bold mb-2">How do I choose the right session?</h3>
+                                <p class="text-base">This catalogue is designed to solve that. Identify the customer's persona (e.g., Developer) and skill level (e.g., 201), then use the mind map to find the corresponding sessions.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flip-card">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front">
+                                <h2 class="text-2xl font-bold">What and who are we focusing on?</h2>
+                            </div>
+                            <div class="flip-card-back">
+                                <h3 class="text-xl font-bold mb-2">What and who are we focusing on?</h3>
+                                <p class="text-base">We are focusing on at least three personas: <span class="font-semibold">Developers</span>, <span class="font-semibold">Platform Engineers</span>, and <span class="font-semibold">Non-Technical</span> stakeholders (Business Value).</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flip-card">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front">
+                                <h2 class="text-2xl font-bold">How are we doing this?</h2>
+                            </div>
+                            <div class="flip-card-back">
+                                <h3 class="text-xl font-bold mb-2">How are we doing this?</h3>
+                                <p class="text-base">Through a combination of presentations, live demos, in-person workshops, and collaborative discussions.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div id="mindmap-container">
+            <div id="mindmap-content" class="mindmap-content"></div>
+        </div>
+        <div id="lines-container" class="absolute top-0 left-0 w-full h-full pointer-events-none"></div>
+    </main>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Flip card logic
+            const cards = document.querySelectorAll('.flip-card');
+            cards.forEach(card => {
+                card.addEventListener('click', () => {
+                    card.classList.toggle('is-flipped');
+                });
+            });
+
+            // Mind map logic
             const container = document.getElementById('mindmap-content');
             const linesContainer = document.getElementById('lines-container');
             let nodeCounter = 0;
